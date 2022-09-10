@@ -1,4 +1,4 @@
-import { gql } from 'apollo-server-micro'
+import { gql } from "apollo-server-micro";
 
 export default gql`
   extend type Query {
@@ -36,6 +36,7 @@ export default gql`
     upsertDiscussion(id: ID, title: String!, text: String, boost: Int, forward: String): Item!
     upsertJob(id: ID, sub: ID!, title: String!, company: String!, location: String, remote: Boolean,
       text: String!, url: String!, maxBid: Int!, status: String, logo: Int): Item!
+    upsertBounty(id: ID, title: String!, text: String, bounty: Int!, boost: Int, forward: String): Item!
     upsertPoll(id: ID, title: String!, text: String, options: [String!]!, boost: Int, forward: String): Item!
     createComment(text: String!, parentId: ID!): Item!
     updateComment(id: ID!, text: String!): Item!
@@ -45,7 +46,7 @@ export default gql`
   }
 
   type PollOption {
-    id: ID,
+    id: ID
     option: String!
     count: Int!
     meVoted: Boolean!
@@ -113,4 +114,4 @@ export default gql`
     status: String
     uploadId: Int
   }
-`
+`;
