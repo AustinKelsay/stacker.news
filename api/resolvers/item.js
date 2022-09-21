@@ -1091,7 +1091,7 @@ export const createMentions = async (item, models) => {
 
 export const updateItem = async (
   parent,
-  { id, data: { title, url, text, boost, forward, parentId } },
+  { id, data: { title, url, text, boost, forward, bounty, parentId } },
   { me, models }
 ) => {
   // update iff this item belongs to me
@@ -1128,8 +1128,8 @@ export const updateItem = async (
 
   const [item] = await serialize(models,
     models.$queryRaw(
-      `${SELECT} FROM update_item($1, $2, $3, $4, $5, $6) AS "Item"`,
-      Number(id), title, url, text, Number(boost || 0), Number(fwdUser?.id)))
+      `${SELECT} FROM update_item($1, $2, $3, $4, $5, $6, $7) AS "Item"`,
+      Number(id), title, url, text, Number(boost || 0), Number(bounty || 0), Number(fwdUser?.id)))
 
   await createMentions(item, models);
 
@@ -1138,9 +1138,10 @@ export const updateItem = async (
 
 const createItem = async (
   parent,
-  { title, url, text, boost, forward, parentId },
+  { title, url, text, boost, forward, parentId, bounty },
   { me, models }
 ) => {
+  console.log(bounty);
   if (!me) {
     throw new AuthenticationError("you must be logged in");
   }
@@ -1167,8 +1168,8 @@ const createItem = async (
 
   const [item] = await serialize(models,
     models.$queryRaw(
-      `${SELECT} FROM create_item($1, $2, $3, $4, $5, $6, $7, '${ITEM_SPAM_INTERVAL}') AS "Item"`,
-      title, url, text, Number(boost || 0), Number(parentId), Number(me.id),
+      `${SELECT} FROM create_item($1, $2, $3, $4, $5, $6, $7, $8, '${ITEM_SPAM_INTERVAL}') AS "Item"`,
+      title, url, text, Number(boost || 0), Number(bounty || 0), Number(parentId), Number(me.id),
       Number(fwdUser?.id)))
 
   await createMentions(item, models);
