@@ -1141,7 +1141,6 @@ const createItem = async (
   { title, url, text, boost, forward, parentId, bounty },
   { me, models }
 ) => {
-  console.log(bounty);
   if (!me) {
     throw new AuthenticationError("you must be logged in");
   }
@@ -1166,11 +1165,38 @@ const createItem = async (
     }
   }
 
-  const [item] = await serialize(models,
+  const hasImgLink = !!(text && mdHas(text, ["link", "image"]));
+
+  if (typeof bounty !== "undefined") {
+    const [item] = await serialize(
+      models,
+      models.$queryRaw(
+        `${SELECT} FROM create_item($1, $2, $3, $4, $5, $6, $7, $8, $9, '${ITEM_SPAM_INTERVAL}') AS "Item"`,
+        title,
+        url,
+        text,
+        Number(boost || 0),
+        Number(bounty || 0),
+        Number(parentId),
+        Number(me.id),
+        Number(fwdUser?.id),
+        hasImgLink
+      )
+    );
+
+    await createMentions(item, models);
+
+    item.comments = [];
+    return item;
+  }
+
+  const [item] = await serialize(
+    models,
     models.$queryRaw(
       `${SELECT} FROM create_item($1, $2, $3, $4, $5, $6, $7, $8, '${ITEM_SPAM_INTERVAL}') AS "Item"`,
-      title, url, text, Number(boost || 0), Number(bounty || 0), Number(parentId), Number(me.id),
-      Number(fwdUser?.id)))
+      title, url, text, Number(boost || 0), Number(parentId), Number(me.id), Number(fwdUser?.id), hasImgLink
+    )
+  );
 
   await createMentions(item, models);
 
@@ -1205,7 +1231,7 @@ function nestComments(flat, parentId) {
 
 // we have to do our own query because ltree is unsupported
 export const SELECT = `SELECT "Item".id, "Item".created_at as "createdAt", "Item".updated_at as "updatedAt", "Item".title,
-  "Item".text, "Item".url, "Item"."userId", "Item"."fwdUserId", "Item"."parentId", "Item"."pinId", "Item"."maxBid",
+  "Item".text, "Item".url, "Item"."bounty", "Item"."userId", "Item"."fwdUserId", "Item"."parentId", "Item"."pinId", "Item"."maxBid",
   "Item".company, "Item".location, "Item".remote, "Item"."deletedAt",
   "Item"."subName", "Item".status, "Item"."uploadId", "Item"."pollCost",
   "Item".msats, "Item".ncomments, "Item"."commentMsats", "Item"."lastCommentAt", "Item"."weightedVotes",

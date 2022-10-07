@@ -20,6 +20,7 @@ export const ITEM_FIELDS = gql`
     sats
     upvotes
     boost
+    bounty
     path
     meSats
     meDontLike
