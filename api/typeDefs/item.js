@@ -3,6 +3,7 @@ import { gql } from "apollo-server-micro";
 export default gql`
   extend type Query {
     items(sub: String, sort: String, type: String, cursor: String, name: String, within: String): Items
+    getBountiesByUser(id: Int!): [Item]
     moreFlatComments(sort: String!, cursor: String, name: String, within: String): Comments
     item(id: ID!): Item
     comments(id: ID!, sort: String): [Item!]!
