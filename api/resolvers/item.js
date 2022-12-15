@@ -673,7 +673,6 @@ export default {
     },
     upsertBounty: async (parent, args, { me, models }) => {
       const { id, ...data } = args;
-
       if (id) {
         return await updateItem(parent, { id, data }, { me, models });
       } else {
@@ -1021,7 +1020,7 @@ export default {
 
       const paid = await models.$queryRaw`
       -- Sum up the sats and if they are greater than or equal to item.bounty than return true, else return false
-      SELECT coalesce(sum("ItemAct"."sats"), 0) >= ${item.bounty} as "bountyPaid"
+      SELECT coalesce(sum("ItemAct"."msats"), 0) >= ${item.bounty} as "bountyPaid"
       FROM "ItemAct"
       INNER JOIN "Item" ON "ItemAct"."itemId" = "Item"."id"
       WHERE "ItemAct"."userId" = ${item.userId}
@@ -1188,17 +1187,17 @@ const createItem = async (
   if (!me) {
     throw new AuthenticationError("you must be logged in");
   }
-
+  
   if (boost && boost < BOOST_MIN) {
     throw new UserInputError(`boost must be at least ${BOOST_MIN}`, {
       argumentName: "boost",
     });
   }
-
+  
   if (!parentId && title.length > MAX_TITLE_LENGTH) {
     throw new UserInputError("title too long");
   }
-
+  
   let fwdUser;
   if (forward) {
     fwdUser = await models.user.findUnique({ where: { name: forward } });
