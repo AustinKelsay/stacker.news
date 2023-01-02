@@ -13,6 +13,9 @@ import CommentEdit from './comment-edit'
 import Countdown from './countdown'
 import { COMMENT_DEPTH_LIMIT, NOFOLLOW_LIMIT } from '../lib/constants'
 import { ignoreClick } from '../lib/clicks'
+import PayBounty from './pay-bounty'
+import BountyIcon from '../svgs/bounty-bag.svg'
+import ActionTooltip from './action-tooltip'
 import { useMe } from './me'
 import DontLikeThis from './dont-link-this'
 import Flag from '../svgs/flag-fill.svg'
@@ -190,6 +193,11 @@ export default function Comment ({
                 <Text topLevel={topLevel} nofollow={item.sats + item.boost < NOFOLLOW_LIMIT}>
                   {truncate ? truncateString(item.text) : item.searchText || item.text}
                 </Text>
+                {item.root.bountyPaidTo && item.root.bountyPaidTo == item.id &&
+                  <ActionTooltip notForm overlayText={`${item.root.bounty} sats paid`}>
+                    <BountyIcon className={`${styles.bountyIcon} ${'fill-success vertical-align-middle'}`} height={16} width={16} /> 
+                  </ActionTooltip>
+                }
               </div>
               )}
         </div>

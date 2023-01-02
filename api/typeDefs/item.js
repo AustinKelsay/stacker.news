@@ -91,6 +91,7 @@ export default gql`
     boost: Int!
     bounty: Int
     bountyPaid: Boolean
+    bountyPaidTo: Int
     sats: Int!
     commentSats: Int!
     lastCommentAt: String
