@@ -458,8 +458,26 @@ export default {
       );
       return items
     },
+    getBountiesByUserName: async (parent, { name }, { models }) => {
+      const user = await models.user.findUnique({ where: { name } });
+      if (!user) {
+        throw new UserInputError("user not found", {
+          argumentName: "name",
+        });
+      }
+      const items = await models.$queryRaw(
+        `
+        ${SELECT}
+        FROM "Item"
+        WHERE "userId" = $1
+        AND "bounty" IS NOT NULL
+        ORDER BY created_at DESC`,
+        user.id
+      );
+      return items
+    },
     moreFlatComments: async (parent, { cursor, name, sort, within }, { me, models }) => {
-      const decodedCursor = decodeCursor(cursor)
+      const decodedCursor = decodeCursor(cursor);
 
       let comments, user;
       switch (sort) {
