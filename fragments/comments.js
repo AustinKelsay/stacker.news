@@ -24,6 +24,9 @@ export const COMMENT_FIELDS = gql`
     root {
       id
       title
+      bounty
+      bountyPaid
+      bountyPaidTo
       user {
         name
         id

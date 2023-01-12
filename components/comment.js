@@ -13,6 +13,9 @@ import CommentEdit from './comment-edit'
 import Countdown from './countdown'
 import { COMMENT_DEPTH_LIMIT, NOFOLLOW_LIMIT } from '../lib/constants'
 import { ignoreClick } from '../lib/clicks'
+import PayBounty from './pay-bounty'
+import BountyIcon from '../svgs/bounty-bag.svg'
+import ActionTooltip from './action-tooltip'
 import { useMe } from './me'
 import DontLikeThis from './dont-link-this'
 import Flag from '../svgs/flag-fill.svg'
@@ -156,6 +159,11 @@ export default function Comment ({
                     />
                   </div>
                 </>}
+                {item.root.bountyPaidTo && item.root.bountyPaidTo == item.id &&
+                  <ActionTooltip notForm overlayText={`${item.root.bounty} sats paid`}>
+                    <BountyIcon className={`${styles.bountyIcon} ${'fill-success vertical-align-middle'}`} height={16} width={16} />
+                  </ActionTooltip>
+                }
             </div>
             {!includeParent && (collapse
               ? <Eye
@@ -195,16 +203,19 @@ export default function Comment ({
         ? <DepthLimit item={item} />
         : (
           <div className={`${styles.children}`}>
+            <div className={styles.replyContainer}>
             {!noReply &&
               <Reply
-                depth={depth + 1} item={item} replyOpen={replyOpen}
+              depth={depth + 1} item={item} replyOpen={replyOpen}
               />}
+              {item.root?.bounty && <PayBounty item={item} />}
+            </div>
             {children}
             <div className={`${styles.comments} ml-sm-1 ml-md-3`}>
               {item.comments && !noComments
                 ? item.comments.map((item) => (
                   <Comment depth={depth + 1} key={item.id} item={item} />
-                  ))
+                ))
                 : null}
             </div>
           </div>
