@@ -167,6 +167,7 @@ export default function Comment ({
                     <BountyIcon className={`${styles.bountyIcon} ${'fill-success vertical-align-middle'}`} height={16} width={16} />
                   </ActionTooltip>
                 }
+              {mine && !canEdit && !item.deletedAt && <DeleteDropdown itemId={item.id} />}
             </div>
             {!includeParent && (collapse
               ? <Eye

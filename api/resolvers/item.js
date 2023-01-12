@@ -415,25 +415,14 @@ export default {
       return items
     },
     getBountiesByUserName: async (parent, { name }, { models }) => {
-      const user = await models.user.findUnique({ where: { name } });
-      if (!user) {
-        throw new UserInputError("user not found", {
-          argumentName: "name",
-        });
-      }
-      const items = await models.$queryRaw(
-        `
-        ${SELECT}
-        FROM "Item"
-        WHERE "userId" = $1
-        AND "bounty" IS NOT NULL
-        ORDER BY created_at DESC`,
-        user.id
-      );
-      return items
-    },
-    moreFlatComments: async (parent, { cursor, name, sort, within }, { me, models }) => {
-      const decodedCursor = decodeCursor(cursor);
+        const user = await models.user.findUnique({ where: { name } });
+
+        if (!user) {
+          throw new UserInputError("user not found", {
+            argumentName: "name",
+          });
+        }
+
         const items = await models.$queryRaw(
           `
           ${SELECT}
@@ -441,11 +430,67 @@ export default {
           WHERE "userId" = $1
           AND "bounty" IS NOT NULL
           ORDER BY created_at DESC`,
-          id
+          user.id
         );
-
+        
         return items
       },
+    moreFlatComments: async (parent, { cursor, name, sort, within }, { me, models }) => {
+      const decodedCursor = decodeCursor(cursor)
+
+      let comments, user
+      switch (sort) {
+        case 'recent':
+          comments = await models.$queryRaw(`
+            ${SELECT}
+            FROM "Item"
+            WHERE "parentId" IS NOT NULL AND created_at <= $1
+            ${await filterClause(me, models)}
+            ORDER BY created_at DESC
+            OFFSET $2
+            LIMIT ${LIMIT}`, decodedCursor.time, decodedCursor.offset)
+          break
+        case 'user':
+          if (!name) {
+            throw new UserInputError('must supply name', { argumentName: 'name' })
+          }
+
+          user = await models.user.findUnique({ where: { name } })
+          if (!user) {
+            throw new UserInputError('no user has that name', { argumentName: 'name' })
+          }
+
+          comments = await models.$queryRaw(`
+            ${SELECT}
+            FROM "Item"
+            WHERE "userId" = $1 AND "parentId" IS NOT NULL
+            AND created_at <= $2
+            ${await filterClause(me, models)}
+            ORDER BY created_at DESC
+            OFFSET $3
+            LIMIT ${LIMIT}`, user.id, decodedCursor.time, decodedCursor.offset)
+          break
+        case 'top':
+          comments = await models.$queryRaw(`
+          ${SELECT}
+          FROM "Item"
+          WHERE "parentId" IS NOT NULL AND "deletedAt" IS NULL
+          AND "Item".created_at <= $1
+          ${topClause(within)}
+          ${await filterClause(me, models)}
+          ${await topOrderByWeightedSats(me, models)}
+          OFFSET $2
+          LIMIT ${LIMIT}`, decodedCursor.time, decodedCursor.offset)
+          break
+        default:
+          throw new UserInputError('invalid sort type', { argumentName: 'sort' })
+      }
+
+      return {
+        cursor: comments.length === LIMIT ? nextCursorEncoded(decodedCursor) : null,
+        comments
+      }
+    },
     item: getItem,
     pageTitleAndUnshorted: async (parent, { url }, { models }) => {
       const res = {}
