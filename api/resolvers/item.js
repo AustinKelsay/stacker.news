@@ -26,8 +26,7 @@ async function comments (me, models, id, sort) {
       break
   }
 
-  const flat = await models.$queryRaw(
-    `
+  const flat = await models.$queryRaw(`
         WITH RECURSIVE base AS (
           ${SELECT}, ARRAY[row_number() OVER (${orderBy}, "Item".path)] AS sort_path
           FROM "Item"
@@ -47,14 +46,12 @@ export async function getItem (parent, { id }, { me, models }) {
   const [item] = await models.$queryRaw(`
   ${SELECT}
   FROM "Item"
-  WHERE id = $1`,
-    Number(id)
-  );
-  return item;
+  WHERE id = $1`, Number(id))
+  return item
 }
 
-function topClause(within) {
-  let interval = ' AND "Item".created_at >= $1 - INTERVAL ';
+function topClause (within) {
+  let interval = ' AND "Item".created_at >= $1 - INTERVAL '
   switch (within) {
     case 'forever':
       interval = ''
@@ -72,7 +69,7 @@ function topClause(within) {
       interval += "'1 day'"
       break
   }
-  return interval;
+  return interval
 }
 
 async function topOrderClause (sort, me, models) {
@@ -149,15 +146,12 @@ function recentClause (type) {
 export default {
   Query: {
     itemRepetition: async (parent, { parentId }, { me, models }) => {
-      if (!me) return 0;
+      if (!me) return 0
       // how many of the parents starting at parentId belong to me
-      const [{ item_spam: count }] = await models.$queryRaw(
-        `SELECT item_spam($1, $2, '${ITEM_SPAM_INTERVAL}')`,
-        Number(parentId),
-        Number(me.id)
-      );
+      const [{ item_spam: count }] = await models.$queryRaw(`SELECT item_spam($1, $2, '${ITEM_SPAM_INTERVAL}')`,
+        Number(parentId), Number(me.id))
 
-      return count;
+      return count
     },
     topItems: async (parent, { cursor, sort, when }, { me, models }) => {
       const decodedCursor = decodeCursor(cursor)
@@ -198,34 +192,25 @@ export default {
       let items; let user; let pins; let subFull
 
       const subClause = (num) => {
-        return sub
-          ? ` AND "subName" = $${num} `
-          : ` AND ("subName" IS NULL OR "subName" = $${num}) `;
-      };
+        return sub ? ` AND "subName" = $${num} ` : ` AND ("subName" IS NULL OR "subName" = $${num}) `
+      }
 
       const activeOrMine = () => {
-        return me
-          ? ` AND (status <> 'STOPPED' OR "userId" = ${me.id}) `
-          : " AND status <> 'STOPPED' ";
-      };
+        return me ? ` AND (status <> 'STOPPED' OR "userId" = ${me.id}) ` : ' AND status <> \'STOPPED\' '
+      }
 
       switch (sort) {
-        case "user":
+        case 'user':
           if (!name) {
-            throw new UserInputError("must supply name", {
-              argumentName: "name",
-            });
+            throw new UserInputError('must supply name', { argumentName: 'name' })
           }
 
-          user = await models.user.findUnique({ where: { name } });
+          user = await models.user.findUnique({ where: { name } })
           if (!user) {
-            throw new UserInputError("no user has that name", {
-              argumentName: "name",
-            });
+            throw new UserInputError('no user has that name', { argumentName: 'name' })
           }
 
-          items = await models.$queryRaw(
-            `
+          items = await models.$queryRaw(`
             ${SELECT}
             FROM "Item"
             WHERE "userId" = $1 AND "parentId" IS NULL AND created_at <= $2
@@ -234,15 +219,10 @@ export default {
             ${await filterClause(me, models)}
             ORDER BY created_at DESC
             OFFSET $3
-            LIMIT ${LIMIT}`,
-            user.id,
-            decodedCursor.time,
-            decodedCursor.offset
-          );
-          break;
-        case "recent":
-          items = await models.$queryRaw(
-            `
+            LIMIT ${LIMIT}`, user.id, decodedCursor.time, decodedCursor.offset)
+          break
+        case 'recent':
+          items = await models.$queryRaw(`
             ${SELECT}
             FROM "Item"
             WHERE "parentId" IS NULL AND created_at <= $1
@@ -252,15 +232,10 @@ export default {
             ${recentClause(type)}
             ORDER BY created_at DESC
             OFFSET $2
-            LIMIT ${LIMIT}`,
-            decodedCursor.time,
-            decodedCursor.offset,
-            sub || "NULL"
-          );
-          break;
-        case "top":
-          items = await models.$queryRaw(
-            `
+            LIMIT ${LIMIT}`, decodedCursor.time, decodedCursor.offset, sub || 'NULL')
+          break
+        case 'top':
+          items = await models.$queryRaw(`
             ${SELECT}
             FROM "Item"
             WHERE "parentId" IS NULL AND "Item".created_at <= $1
@@ -269,15 +244,12 @@ export default {
             ${await filterClause(me, models)}
             ${await topOrderByWeightedSats(me, models)}
             OFFSET $2
-            LIMIT ${LIMIT}`,
-            decodedCursor.time,
-            decodedCursor.offset
-          );
-          break;
+            LIMIT ${LIMIT}`, decodedCursor.time, decodedCursor.offset)
+          break
         default:
           // sub so we know the default ranking
           if (sub) {
-            subFull = await models.sub.findUnique({ where: { name: sub } });
+            subFull = await models.sub.findUnique({ where: { name: sub } })
           }
 
           switch (subFull?.rankingType) {
@@ -302,12 +274,8 @@ export default {
                   ORDER BY created_at DESC)
                 ) a
                 OFFSET $2
-                LIMIT ${LIMIT}`,
-                decodedCursor.time,
-                decodedCursor.offset,
-                sub
-              );
-              break;
+                LIMIT ${LIMIT}`, decodedCursor.time, decodedCursor.offset, sub)
+              break
             default:
               // HACK we can speed hack the first hot page, by limiting our query to only
               // the most recently created items so that the tables doesn't have to
@@ -316,8 +284,7 @@ export default {
               // if there are 21 items, return them ... if not do the unrestricted query
               // instead of doing this we should materialize a view ... but this is easier for now
               if (decodedCursor.offset === 0) {
-                items = await models.$queryRaw(
-                  `
+                items = await models.$queryRaw(`
                   ${SELECT}
                   FROM "Item"
                   WHERE "parentId" IS NULL AND "Item".created_at <= $1 AND "Item".created_at > $3
@@ -326,17 +293,11 @@ export default {
                   ${await filterClause(me, models)}
                   ${await newTimedOrderByWeightedSats(me, models, 1)}
                   OFFSET $2
-                  LIMIT ${LIMIT}`,
-                  decodedCursor.time,
-                  decodedCursor.offset,
-                  new Date(new Date().setDate(new Date().getDate() - 5)),
-                  sub || "NULL"
-                );
+                  LIMIT ${LIMIT}`, decodedCursor.time, decodedCursor.offset, new Date(new Date().setDate(new Date().getDate() - 5)), sub || 'NULL')
               }
 
               if (decodedCursor.offset !== 0 || items?.length < LIMIT) {
-                items = await models.$queryRaw(
-                  `
+                items = await models.$queryRaw(`
                   ${SELECT}
                   FROM "Item"
                   WHERE "parentId" IS NULL AND "Item".created_at <= $1
@@ -345,11 +306,7 @@ export default {
                   ${await filterClause(me, models)}
                   ${await newTimedOrderByWeightedSats(me, models, 1)}
                   OFFSET $2
-                  LIMIT ${LIMIT}`,
-                  decodedCursor.time,
-                  decodedCursor.offset,
-                  sub || "NULL"
-                );
+                  LIMIT ${LIMIT}`, decodedCursor.time, decodedCursor.offset, sub || 'NULL')
               }
 
               if (decodedCursor.offset === 0) {
@@ -363,18 +320,17 @@ export default {
                     )
                     FROM "Item"
                     WHERE "pinId" IS NOT NULL
-                ) rank_filter WHERE RANK = 1`);
+                ) rank_filter WHERE RANK = 1`)
               }
-              break;
+              break
           }
-          break;
+          break
       }
       return {
-        cursor:
-          items.length === LIMIT ? nextCursorEncoded(decodedCursor) : null,
+        cursor: items.length === LIMIT ? nextCursorEncoded(decodedCursor) : null,
         items,
-        pins,
-      };
+        pins
+      }
     },
     allItems: async (parent, { cursor }, { me, models }) => {
       const decodedCursor = decodeCursor(cursor)
@@ -478,80 +434,18 @@ export default {
     },
     moreFlatComments: async (parent, { cursor, name, sort, within }, { me, models }) => {
       const decodedCursor = decodeCursor(cursor);
-
-      let comments, user;
-      switch (sort) {
-        case "recent":
-          comments = await models.$queryRaw(
-            `
-            ${SELECT}
-            FROM "Item"
-            WHERE "parentId" IS NOT NULL AND created_at <= $1
-            ${await filterClause(me, models)}
-            ORDER BY created_at DESC
-            OFFSET $2
-            LIMIT ${LIMIT}`,
-            decodedCursor.time,
-            decodedCursor.offset
-          );
-          break;
-        case "user":
-          if (!name) {
-            throw new UserInputError("must supply name", {
-              argumentName: "name",
-            });
-          }
-
-          user = await models.user.findUnique({ where: { name } });
-          if (!user) {
-            throw new UserInputError("no user has that name", {
-              argumentName: "name",
-            });
-          }
-
-          comments = await models.$queryRaw(
-            `
-            ${SELECT}
-            FROM "Item"
-            WHERE "userId" = $1 AND "parentId" IS NOT NULL
-            AND created_at <= $2
-            ${await filterClause(me, models)}
-            ORDER BY created_at DESC
-            OFFSET $3
-            LIMIT ${LIMIT}`,
-            user.id,
-            decodedCursor.time,
-            decodedCursor.offset
-          );
-          break;
-        case "top":
-          comments = await models.$queryRaw(
-            `
+        const items = await models.$queryRaw(
+          `
           ${SELECT}
           FROM "Item"
-          WHERE "parentId" IS NOT NULL AND "deletedAt" IS NULL
-          AND "Item".created_at <= $1
-          ${topClause(within)}
-          ${await filterClause(me, models)}
-          ${await topOrderByWeightedSats(me, models)}
-          OFFSET $2
-          LIMIT ${LIMIT}`,
-            decodedCursor.time,
-            decodedCursor.offset
-          );
-          break;
-        default:
-          throw new UserInputError("invalid sort type", {
-            argumentName: "sort",
-          });
-      }
+          WHERE "userId" = $1
+          AND "bounty" IS NOT NULL
+          ORDER BY created_at DESC`,
+          id
+        );
 
-      return {
-        cursor:
-          comments.length === LIMIT ? nextCursorEncoded(decodedCursor) : null,
-        comments,
-      };
-    },
+        return items
+      },
     item: getItem,
     pageTitleAndUnshorted: async (parent, { url }, { models }) => {
       const res = {}
@@ -589,24 +483,21 @@ export default {
       const whitelist = ['news.ycombinator.com/item', 'bitcointalk.org/index.php']
       const youtube = ['www.youtube.com', 'youtube.com', 'm.youtube.com', 'youtu.be']
       if (whitelist.includes(uri)) {
-        similar += `\\${urlObj.search}`;
+        similar += `\\${urlObj.search}`
       } else if (youtube.includes(urlObj.hostname)) {
         // extract id and create both links
         const matches = url.match(/(https?:\/\/)?((www\.)?(youtube(-nocookie)?|youtube.googleapis)\.com.*(v\/|v=|vi=|vi\/|e\/|embed\/|user\/.*\/u\/\d+\/)|youtu\.be\/)(?<id>[_0-9a-z-]+)/i)
         similar = `(http(s)?://)?((www.|m.)?youtube.com/(watch\\?v=|v/)${matches?.groups?.id}|youtu.be/${matches?.groups?.id})((\\?|&|#)%)?`
       } else {
-        similar += "((\\?|#)%)?";
+        similar += '((\\?|#)%)?'
       }
 
-      return await models.$queryRaw(
-        `
+      return await models.$queryRaw(`
         ${SELECT}
         FROM "Item"
         WHERE LOWER(url) SIMILAR TO LOWER($1)
         ORDER BY created_at DESC
-        LIMIT 3`,
-        similar
-      );
+        LIMIT 3`, similar)
     },
     comments: async (parent, { id, sort }, { me, models }) => {
       return comments(me, models, id, sort)
@@ -675,65 +566,55 @@ export default {
       data.url = removeTracking(data.url)
 
       if (id) {
-        return await updateItem(parent, { id, data }, { me, models });
+        return await updateItem(parent, { id, data }, { me, models })
       } else {
-        return await createItem(parent, data, { me, models });
+        return await createItem(parent, data, { me, models })
       }
     },
     upsertDiscussion: async (parent, args, { me, models }) => {
-      const { id, ...data } = args;
+      const { id, ...data } = args
 
       if (id) {
-        return await updateItem(parent, { id, data }, { me, models });
+        return await updateItem(parent, { id, data }, { me, models })
       } else {
-        return await createItem(parent, data, { me, models });
+        return await createItem(parent, data, { me, models })
       }
     },
     upsertBounty: async (parent, args, { me, models }) => {
       const { id, ...data } = args;
+
       if (id) {
         return await updateItem(parent, { id, data }, { me, models });
       } else {
         return await createItem(parent, data, { me, models });
       }
     },
-    upsertPoll: async (
-      parent,
-      { id, forward, boost, title, text, options },
-      { me, models }
-    ) => {
+    upsertPoll: async (parent, { id, forward, boost, title, text, options }, { me, models }) => {
       if (!me) {
-        throw new AuthenticationError("you must be logged in");
+        throw new AuthenticationError('you must be logged in')
       }
 
       if (boost && boost < BOOST_MIN) {
-        throw new UserInputError(`boost must be at least ${BOOST_MIN}`, {
-          argumentName: "boost",
-        });
+        throw new UserInputError(`boost must be at least ${BOOST_MIN}`, { argumentName: 'boost' })
       }
 
-      let fwdUser;
+      let fwdUser
       if (forward) {
-        fwdUser = await models.user.findUnique({ where: { name: forward } });
+        fwdUser = await models.user.findUnique({ where: { name: forward } })
         if (!fwdUser) {
-          throw new UserInputError("forward user does not exist", {
-            argumentName: "forward",
-          });
+          throw new UserInputError('forward user does not exist', { argumentName: 'forward' })
         }
       }
 
       if (id) {
         const optionCount = await models.pollOption.count({
           where: {
-            itemId: Number(id),
-          },
-        });
+            itemId: Number(id)
+          }
+        })
 
         if (options.length + optionCount > MAX_POLL_NUM_CHOICES) {
-          throw new UserInputError(
-            `total choices must be <${MAX_POLL_NUM_CHOICES}`,
-            { argumentName: "options" }
-          );
+          throw new UserInputError(`total choices must be <${MAX_POLL_NUM_CHOICES}`, { argumentName: 'options' })
         }
 
         const [item] = await serialize(models,
@@ -743,10 +624,7 @@ export default {
         return item;
       } else {
         if (options.length < 2 || options.length > MAX_POLL_NUM_CHOICES) {
-          throw new UserInputError(
-            `choices must be >2 and <${MAX_POLL_NUM_CHOICES}`,
-            { argumentName: "options" }
-          );
+          throw new UserInputError(`choices must be >2 and <${MAX_POLL_NUM_CHOICES}`, { argumentName: 'options' })
         }
 
         const [item] = await serialize(models,
@@ -759,30 +637,17 @@ export default {
         return item;
       }
     },
-    upsertJob: async (
-      parent,
-      {
-        id,
-        sub,
-        title,
-        company,
-        location,
-        remote,
-        text,
-        url,
-        maxBid,
-        status,
-        logo,
-      },
-      { me, models }
-    ) => {
+    upsertJob: async (parent, {
+      id, sub, title, company, location, remote,
+      text, url, maxBid, status, logo
+    }, { me, models }) => {
       if (!me) {
-        throw new AuthenticationError("you must be logged in to create job");
+        throw new AuthenticationError('you must be logged in to create job')
       }
 
-      const fullSub = await models.sub.findUnique({ where: { name: sub } });
+      const fullSub = await models.sub.findUnique({ where: { name: sub } })
       if (!fullSub) {
-        throw new UserInputError("not a valid sub", { argumentName: "sub" });
+        throw new UserInputError('not a valid sub', { argumentName: 'sub' })
       }
 
       if (maxBid < 0) {
@@ -790,9 +655,7 @@ export default {
       }
 
       if (!location && !remote) {
-        throw new UserInputError("must specify location or remote", {
-          argumentName: "location",
-        });
+        throw new UserInputError('must specify location or remote', { argumentName: 'location' })
       }
 
       location = location.toLowerCase() === 'remote' ? undefined : location
@@ -801,7 +664,7 @@ export default {
       if (id) {
         const old = await models.item.findUnique({ where: { id: Number(id) } })
         if (Number(old.userId) !== Number(me?.id)) {
-          throw new AuthenticationError("item does not belong to you");
+          throw new AuthenticationError('item does not belong to you')
         }
         ([item] = await serialize(models,
           models.$queryRaw(
@@ -819,58 +682,42 @@ export default {
       return item
     },
     createComment: async (parent, { text, parentId }, { me, models }) => {
-      return await createItem(parent, { text, parentId }, { me, models });
+      return await createItem(parent, { text, parentId }, { me, models })
     },
     updateComment: async (parent, { id, text }, { me, models }) => {
-      return await updateItem(parent, { id, data: { text } }, { me, models });
+      return await updateItem(parent, { id, data: { text } }, { me, models })
     },
     pollVote: async (parent, { id }, { me, models }) => {
       if (!me) {
-        throw new AuthenticationError("you must be logged in");
+        throw new AuthenticationError('you must be logged in')
       }
 
-      await serialize(
-        models,
-        models.$queryRaw(
-          `${SELECT} FROM poll_vote($1, $2) AS "Item"`,
-          Number(id),
-          Number(me.id)
-        )
-      );
+      await serialize(models,
+        models.$queryRaw(`${SELECT} FROM poll_vote($1, $2) AS "Item"`,
+          Number(id), Number(me.id)))
 
-      return id;
+      return id
     },
     act: async (parent, { id, sats }, { me, models }) => {
       // need to make sure we are logged in
       if (!me) {
-        throw new AuthenticationError("you must be logged in");
+        throw new AuthenticationError('you must be logged in')
       }
 
       if (sats <= 0) {
-        throw new UserInputError("sats must be positive", {
-          argumentName: "sats",
-        });
+        throw new UserInputError('sats must be positive', { argumentName: 'sats' })
       }
 
       // disallow self tips
-      const [item] = await models.$queryRaw(
-        `
+      const [item] = await models.$queryRaw(`
       ${SELECT}
       FROM "Item"
-      WHERE id = $1 AND "userId" = $2`,
-        Number(id),
-        me.id
-      );
+      WHERE id = $1 AND "userId" = $2`, Number(id), me.id)
       if (item) {
-        throw new UserInputError("cannot tip your self");
+        throw new UserInputError('cannot tip your self')
       }
 
-      const [{ item_act: vote }] = await serialize(
-        models,
-        models.$queryRaw`SELECT item_act(${Number(id)}, ${
-          me.id
-        }, 'TIP', ${Number(sats)})`
-      );
+      const [{ item_act: vote }] = await serialize(models, models.$queryRaw`SELECT item_act(${Number(id)}, ${me.id}, 'TIP', ${Number(sats)})`)
 
       return {
         vote,
@@ -909,49 +756,49 @@ export default {
     },
     sub: async (item, args, { models }) => {
       if (!item.subName) {
-        return null;
+        return null
       }
 
-      return await models.sub.findUnique({ where: { name: item.subName } });
+      return await models.sub.findUnique({ where: { name: item.subName } })
     },
     position: async (item, args, { models }) => {
       if (!item.pinId) {
-        return null;
+        return null
       }
 
-      const pin = await models.pin.findUnique({ where: { id: item.pinId } });
+      const pin = await models.pin.findUnique({ where: { id: item.pinId } })
       if (!pin) {
-        return null;
+        return null
       }
 
-      return pin.position;
+      return pin.position
     },
     prior: async (item, args, { models }) => {
       if (!item.pinId) {
-        return null;
+        return null
       }
 
       const prior = await models.item.findFirst({
         where: {
           pinId: item.pinId,
           createdAt: {
-            lt: item.createdAt,
-          },
+            lt: item.createdAt
+          }
         },
         orderBy: {
-          createdAt: "desc",
-        },
-      });
+          createdAt: 'desc'
+        }
+      })
 
       if (!prior) {
-        return null;
+        return null
       }
 
-      return prior.id;
+      return prior.id
     },
     poll: async (item, args, { models, me }) => {
       if (!item.pollCost) {
-        return null;
+        return null
       }
 
       const options = await models.$queryRaw`
@@ -962,25 +809,25 @@ export default {
         WHERE "PollOption"."itemId" = ${item.id}
         GROUP BY "PollOption".id
         ORDER BY "PollOption".id ASC
-      `;
-      const poll = {};
-      poll.options = options;
-      poll.meVoted = options.some((o) => o.meVoted);
-      poll.count = options.reduce((t, o) => t + o.count, 0);
+      `
+      const poll = {}
+      poll.options = options
+      poll.meVoted = options.some(o => o.meVoted)
+      poll.count = options.reduce((t, o) => t + o.count, 0)
 
-      return poll;
+      return poll
     },
     user: async (item, args, { models }) =>
       await models.user.findUnique({ where: { id: item.userId } }),
     fwdUser: async (item, args, { models }) => {
       if (!item.fwdUserId) {
-        return null;
+        return null
       }
-      return await models.user.findUnique({ where: { id: item.fwdUserId } });
+      return await models.user.findUnique({ where: { id: item.fwdUserId } })
     },
     comments: async (item, args, { me, models }) => {
       if (item.comments) {
-        return item.comments;
+        return item.comments
       }
       return comments(me, models, item.id, 'hot')
     },
@@ -999,9 +846,9 @@ export default {
         },
         where: {
           itemId: Number(item.id),
-          act: "BOOST",
-        },
-      });
+          act: 'BOOST'
+        }
+      })
 
       return (msats && msatsToSats(msats)) || 0
     },
@@ -1009,7 +856,7 @@ export default {
       return item.weightedVotes - item.weightedDownVotes
     },
     meSats: async (item, args, { me, models }) => {
-      if (!me) return 0;
+      if (!me) return 0
 
       const { sum: { msats } } = await models.itemAct.aggregate({
         sum: {
@@ -1020,7 +867,7 @@ export default {
           userId: me.id,
           OR: [
             {
-              act: "TIP",
+              act: 'TIP'
             },
             {
               act: 'FEE'
@@ -1032,41 +879,41 @@ export default {
       return (msats && msatsToSats(msats)) || 0
     },
     bountyPaid: async (item, args, { models }) => {
-      if (!item.bounty) {
-        return null;
-      }
-
-      const paid = await models.$queryRaw`
-      -- Sum up the sats and if they are greater than or equal to item.bounty than return true, else return false
-      SELECT coalesce(sum("ItemAct"."msats"), 0) >= ${item.bounty} as "bountyPaid"
-      FROM "ItemAct"
-      INNER JOIN "Item" ON "ItemAct"."itemId" = "Item"."id"
-      WHERE "ItemAct"."userId" = ${item.userId}
-      AND "Item"."parentId" = ${item.id}
-      `;
-
-      return paid[0].bountyPaid;
-    },
-    bountyPaidTo: async (item, args, { models }) => {
-      if (!item.bounty) {
-        return null;
-      }
-    
-      const paidTo = await models.$queryRaw`
-      SELECT "Item"."id" as "itemId", coalesce(sum("ItemAct"."msats"), 0) as "totalMsats"
-      FROM "ItemAct"
-      INNER JOIN "Item" ON "ItemAct"."itemId" = "Item"."id"
-      WHERE "ItemAct"."userId" = ${item.userId}
-      AND "Item"."parentId" = ${item.id}
-      GROUP BY "Item"."id"
-      `;
-
-      if (paidTo.length === 0) {
-        return null;
-      }
-
-      return paidTo[0].itemId;
-    },
+        if (!item.bounty) {
+          return null;
+        }
+  
+        const paid = await models.$queryRaw`
+            -- Sum up the sats and if they are greater than or equal to item.bounty than return true, else return false
+            SELECT coalesce(sum("ItemAct"."msats"), 0) >= ${item.bounty} as "bountyPaid"
+            FROM "ItemAct"
+            INNER JOIN "Item" ON "ItemAct"."itemId" = "Item"."id"
+            WHERE "ItemAct"."userId" = ${item.userId}
+            AND "Item"."parentId" = ${item.id}
+        `;
+  
+        return paid[0].bountyPaid;
+      },
+      bountyPaidTo: async (item, args, { models }) => {
+        if (!item.bounty) {
+          return null;
+        }
+      
+        const paidTo = await models.$queryRaw`
+            SELECT "Item"."id" as "itemId", coalesce(sum("ItemAct"."msats"), 0) as "totalMsats"
+            FROM "ItemAct"
+            INNER JOIN "Item" ON "ItemAct"."itemId" = "Item"."id"
+            WHERE "ItemAct"."userId" = ${item.userId}
+            AND "Item"."parentId" = ${item.id}
+            GROUP BY "Item"."id"
+        `;
+  
+        if (paidTo.length === 0) {
+          return null;
+        }
+  
+        return paidTo[0].itemId;
+      },
     meDontLike: async (item, args, { me, models }) => {
       if (!me) return false
 
@@ -1103,82 +950,73 @@ export default {
       return paid[0].bountyPaid;
     },
     mine: async (item, args, { me, models }) => {
-      return me?.id === item.userId;
+      return me?.id === item.userId
     },
     root: async (item, args, { models }) => {
       if (!item.parentId) {
-        return null;
+        return null
       }
-      return (
-        await models.$queryRaw(
-          `
+      return (await models.$queryRaw(`
         ${SELECT}
         FROM "Item"
         WHERE id = (
           SELECT ltree2text(subltree(path, 0, 1))::integer
           FROM "Item"
-          WHERE id = $1)`,
-          Number(item.id)
-        )
-      )[0];
+          WHERE id = $1)`, Number(item.id)))[0]
     },
     parent: async (item, args, { models }) => {
       if (!item.parentId) {
-        return null;
+        return null
       }
-      return await models.item.findUnique({ where: { id: item.parentId } });
-    },
-  },
-};
+      return await models.item.findUnique({ where: { id: item.parentId } })
+    }
+  }
+}
 
-const namePattern = /\B@[\w_]+/gi;
+const namePattern = /\B@[\w_]+/gi
 
 export const createMentions = async (item, models) => {
   // if we miss a mention, in the rare circumstance there's some kind of
   // failure, it's not a big deal so we don't do it transactionally
   // ideally, we probably would
   if (!item.text) {
-    return;
+    return
   }
 
   try {
-    const mentions = item.text.match(namePattern)?.map((m) => m.slice(1));
+    const mentions = item.text.match(namePattern)?.map(m => m.slice(1))
     if (mentions?.length > 0) {
       const users = await models.user.findMany({
         where: {
-          name: { in: mentions },
-        },
-      });
+          name: { in: mentions }
+        }
+      })
 
-      users.forEach(async (user) => {
+      users.forEach(async user => {
         const data = {
           itemId: item.id,
-          userId: user.id,
-        };
+          userId: user.id
+        }
 
         await models.mention.upsert({
           where: {
-            itemId_userId: data,
+            itemId_userId: data
           },
           update: data,
-          create: data,
-        });
-      });
+          create: data
+        })
+      })
     }
   } catch (e) {
-    console.log("mention failure", e);
+    console.log('mention failure', e)
   }
-};
+}
 
-export const updateItem = async (
-  parent,
-  { id, data: { title, url, text, boost, forward, bounty, parentId } },
-  { me, models }
-) => {
+export const updateItem = async (parent, { id, data: { title, url, text, boost, forward, bounty, parentId } }, { me, models }) => {
   // update iff this item belongs to me
-  const old = await models.item.findUnique({ where: { id: Number(id) } });
+  const old = await models.item.findUnique({ where: { id: Number(id) } })
   if (Number(old.userId) !== Number(me?.id)) {
-    throw new AuthenticationError("item does not belong to you");
+    throw new AuthenticationError('item does not belong to you')
   }
 
   // if it's not the FAQ, not their bio, and older than 10 minutes
@@ -1188,22 +1026,18 @@ export const updateItem = async (
   }
 
   if (boost && boost < BOOST_MIN) {
-    throw new UserInputError(`boost must be at least ${BOOST_MIN}`, {
-      argumentName: "boost",
-    });
+    throw new UserInputError(`boost must be at least ${BOOST_MIN}`, { argumentName: 'boost' })
   }
 
   if (!old.parentId && title.length > MAX_TITLE_LENGTH) {
-    throw new UserInputError("title too long");
+    throw new UserInputError('title too long')
   }
 
-  let fwdUser;
+  let fwdUser
   if (forward) {
-    fwdUser = await models.user.findUnique({ where: { name: forward } });
+    fwdUser = await models.user.findUnique({ where: { name: forward } })
     if (!fwdUser) {
-      throw new UserInputError("forward user does not exist", {
-        argumentName: "forward",
-      });
+      throw new UserInputError('forward user does not exist', { argumentName: 'forward' })
     }
   }
 
@@ -1223,26 +1057,22 @@ const createItem = async (
   { me, models }
 ) => {
   if (!me) {
-    throw new AuthenticationError("you must be logged in");
+    throw new AuthenticationError('you must be logged in')
   }
-  
+
   if (boost && boost < BOOST_MIN) {
-    throw new UserInputError(`boost must be at least ${BOOST_MIN}`, {
-      argumentName: "boost",
-    });
+    throw new UserInputError(`boost must be at least ${BOOST_MIN}`, { argumentName: 'boost' })
   }
-  
+
   if (!parentId && title.length > MAX_TITLE_LENGTH) {
-    throw new UserInputError("title too long");
+    throw new UserInputError('title too long')
   }
-  
-  let fwdUser;
+
+  let fwdUser
   if (forward) {
-    fwdUser = await models.user.findUnique({ where: { name: forward } });
+    fwdUser = await models.user.findUnique({ where: { name: forward } })
     if (!fwdUser) {
-      throw new UserInputError("forward user does not exist", {
-        argumentName: "forward",
-      });
+      throw new UserInputError('forward user does not exist', { argumentName: 'forward' })
     }
   }
 
@@ -1291,27 +1121,28 @@ function nestComments(flat, parentId) {
   for (let i = 0; i < flat.length; ) {
     if (!flat[i].comments) flat[i].comments = [];
     if (Number(flat[i].parentId) === Number(parentId)) {
-      result.push(flat[i]);
-      added++;
-      i++;
+      result.push(flat[i])
+      added++
+      i++
     } else if (result.length > 0) {
-      const item = result[result.length - 1];
-      const [nested, newAdded] = nestComments(flat.slice(i), item.id);
+      const item = result[result.length - 1]
+      const [nested, newAdded] = nestComments(flat.slice(i), item.id)
       if (newAdded === 0) {
-        break;
+        break
       }
-      item.comments.push(...nested);
-      i += newAdded;
-      added += newAdded;
+      item.comments.push(...nested)
+      i += newAdded
+      added += newAdded
     } else {
-      break;
+      break
     }
   }
-  return [result, added];
+  return [result, added]
 }
 
 // we have to do our own query because ltree is unsupported
-export const SELECT = `SELECT "Item".id, "Item".created_at as "createdAt", "Item".updated_at as "updatedAt", "Item".title,
+export const SELECT =
+  `SELECT "Item".id, "Item".created_at as "createdAt", "Item".updated_at as "updatedAt", "Item".title,
   "Item".text, "Item".url, "Item"."bounty", "Item"."userId", "Item"."fwdUserId", "Item"."parentId", "Item"."pinId", "Item"."maxBid",
   "Item".company, "Item".location, "Item".remote, "Item"."deletedAt",
   "Item"."subName", "Item".status, "Item"."uploadId", "Item"."pollCost",

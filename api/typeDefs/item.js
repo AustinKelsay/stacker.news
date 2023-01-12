@@ -1,4 +1,4 @@
-import { gql } from "apollo-server-micro";
+import { gql } from 'apollo-server-micro'
 
 export default gql`
   extend type Query {
@@ -49,7 +49,7 @@ export default gql`
   }
 
   type PollOption {
-    id: ID
+    id: ID,
     option: String!
     count: Int!
     meVoted: Boolean!
@@ -120,4 +120,4 @@ export default gql`
     status: String
     uploadId: Int
   }
-`;
+`
