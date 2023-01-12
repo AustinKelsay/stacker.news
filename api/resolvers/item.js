@@ -1043,8 +1043,8 @@ export const updateItem = async (parent, { id, data: { title, url, text, boost, 
 
   const [item] = await serialize(models,
     models.$queryRaw(
-      `${SELECT} FROM update_item($1, $2, $3, $4, $5, $6, $7) AS "Item"`,
-      Number(id), title, url, text, Number(boost || 0), Number(bounty || 0), Number(fwdUser?.id)))
+      `${SELECT} FROM update_item($1, $2, $3, $4, $5, $6) AS "Item"`,
+      Number(id), title, url, text, Number(boost || 0), Number(fwdUser?.id)))
 
   await createMentions(item, models);
 
