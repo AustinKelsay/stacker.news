@@ -163,7 +163,7 @@ export default function Comment ({
                 </>}
                 {mine && !canEdit && !item.deletedAt && <DeleteDropdown itemId={item.id} />}
                 {item.root.bountyPaidTo && item.root.bountyPaidTo == item.id &&
-                  <ActionTooltip notForm overlayText={`${item.root.bounty} sats paid`}>
+                  <ActionTooltip notForm overlayText={`${abbrNum(item.root.bounty)} sats paid`}>
                     <BountyIcon className={`${styles.bountyIcon} ${'fill-success vertical-align-middle'}`} height={16} width={16} />
                   </ActionTooltip>
                 }
