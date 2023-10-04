@@ -23,8 +23,8 @@ export default gql`
     setSettings(tipDefault: Int!, turboTipping: Boolean!, fiatCurrency: String!, noteItemSats: Boolean!,
       noteEarning: Boolean!, noteAllDescendants: Boolean!, noteMentions: Boolean!, noteDeposits: Boolean!,
       noteInvites: Boolean!, noteJobIndicator: Boolean!, noteCowboyHat: Boolean!, hideInvoiceDesc: Boolean!,
-      hideFromTopUsers: Boolean!, hideCowboyHat: Boolean!, clickToLoadImg: Boolean!,
-      wildWestMode: Boolean!, greeterMode: Boolean!, nostrPubkey: String, nostrRelays: [String!], hideBookmarks: Boolean!,
+      hideFromTopUsers: Boolean!, hideCowboyHat: Boolean!, imgproxyOnly: Boolean!,
+      wildWestMode: Boolean!, greeterMode: Boolean!, nostrPubkey: String, nostrCrossposting: Boolean, nostrRelays: [String!], hideBookmarks: Boolean!,
       noteForwardedSats: Boolean!, hideWalletBalance: Boolean!, hideIsContributor: Boolean!, diagnostics: Boolean!): User
     setPhoto(photoId: ID!): Int!
     upsertBio(bio: String!): User!
@@ -34,6 +34,7 @@ export default gql`
     hideWelcomeBanner: Boolean
     subscribeUserPosts(id: ID): User
     subscribeUserComments(id: ID): User
+    toggleMute(id: ID): User
   }
 
   type AuthMethods {
@@ -72,6 +73,7 @@ export default gql`
     since: Int
     upvotePopover: Boolean!
     tipPopover: Boolean!
+    nostrCrossposting: Boolean!
     noteItemSats: Boolean!
     noteEarning: Boolean!
     noteAllDescendants: Boolean!
@@ -88,7 +90,7 @@ export default gql`
     hideWelcomeBanner: Boolean!
     hideWalletBalance: Boolean!
     diagnostics: Boolean!
-    clickToLoadImg: Boolean!
+    imgproxyOnly: Boolean!
     wildWestMode: Boolean!
     greeterMode: Boolean!
     lastCheckedJobs: String
@@ -97,5 +99,6 @@ export default gql`
     hideIsContributor: Boolean!
     meSubscriptionPosts: Boolean!
     meSubscriptionComments: Boolean!
+    meMute: Boolean
   }
 `
