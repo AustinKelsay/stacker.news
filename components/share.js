@@ -7,6 +7,7 @@ import { useMe } from './me'
 import { useToast } from './toast'
 import { SSR } from '../lib/constants'
 import { callWithTimeout } from '../lib/nostr'
+import ItemAct from './item-act'
 
 const referrurl = (ipath, me) => {
   const path = `${ipath}${me ? `/r/${me.name}` : ''}`
@@ -146,16 +147,6 @@ export function CrosspostDropdownItem ({ item }) {
   const crossposter = useCrossposter()
   const toaster = useToast()
 
-  const [updateNoteId] = useMutation(
-    gql`
-      mutation updateNoteId($id: ID!, $noteId: String!) {
-        updateNoteId(id: $id, noteId: $noteId) {
-          id
-          noteId
-        }
-      }`
-  )
-
   return (
     <Dropdown.Item
       onClick={async () => {
@@ -170,17 +161,7 @@ export function CrosspostDropdownItem ({ item }) {
         }
         try {
           if (item?.id) {
-            const crosspostResult = await crossposter({ ...item })
-            const noteId = crosspostResult?.noteId
-            if (noteId) {
-              await updateNoteId({
-                variables: {
-                  id: item.id,
-                  noteId
-                }
-              })
-            }
-            toaster.success('Crosspost successful')
+              await crossposter(item, item.id)
           } else {
             toaster.warning('Item ID not available')
           }
