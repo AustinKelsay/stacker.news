@@ -66,15 +66,18 @@ async function bountyWinner (q) {
     variables: { q: `${q} nym:sn`, sort: 'recent', what: 'posts', when: 'week' }
   })
 
+  const items = bounty.data.search.items.filter(i => i.bountyPaidTo?.length > 0)
+  if (items.length === 0) return
+
   try {
     const item = await client.query({
       query: WINNER,
-      variables: { id: bounty.data.search.items[0].bountyPaidTo[0] }
+      variables: { id: items[0].bountyPaidTo[0] }
     })
 
     const winner = { ...item.data.item, image: Object.values(item.data.item.imgproxyUrls)[0]?.['640w'] }
 
-    return { bounty: bounty.data.search.items[0].id, winner }
+    return { bounty: items[0].id, winner }
   } catch (e) {
 
   }
@@ -152,7 +155,9 @@ Yeehaw,
 Keyan
 A guy who works on Stacker News
 
-[Watch](https://www.youtube.com/@stackernews/live) or [Listen](https://www.fountain.fm/show/Mg1AWuvkeZSFhsJZ3BW2) to SN's top stories every week.`)
+[Watch](https://www.youtube.com/@stackernews/live) or [Listen](https://www.fountain.fm/show/Mg1AWuvkeZSFhsJZ3BW2) to SN's top stories every week.
+
+Get this newsletter sent to your email inbox by signing up [here](https://mail.stacker.news/subscription/form).`)
 }
 
 main()

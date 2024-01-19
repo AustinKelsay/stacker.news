@@ -77,17 +77,17 @@ export async function serializeInvoicable (query, { models, lnd, hash, hmac, me,
   if (hash) {
     invoice = await checkInvoice(models, hash, hmac, enforceFee)
     trx = [
-      models.$queryRaw`UPDATE users SET msats = msats + ${invoice.msatsReceived} WHERE id = ${invoice.user.id}`,
-      ...trx,
-      models.invoice.update({ where: { hash: invoice.hash }, data: { confirmedAt: new Date() } })
+      models.$executeRaw`SELECT confirm_invoice(${hash}, ${invoice.msatsReceived})`,
+      ...trx
     ]
   }
 
   let results = await serialize(models, ...trx)
 
   if (hash) {
-    if (invoice?.isHeld) await settleHodlInvoice({ secret: invoice.preimage, lnd })
-    results = results.slice(1, -1)
+    if (invoice?.isHeld) { await settleHodlInvoice({ secret: invoice.preimage, lnd }) }
+    // remove first element since that is the confirmed invoice
+    [, ...results] = results
   }
 
   // if there is only one result, return it directly, else the array

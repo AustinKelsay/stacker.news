@@ -31,6 +31,8 @@ export default gql`
     subscribeUserPosts(id: ID): User
     subscribeUserComments(id: ID): User
     toggleMute(id: ID): User
+    setAutoWithdraw(lnAddr: String!, autoWithdrawThreshold: Int!, autoWithdrawMaxFeePercent: Float!): Boolean
+    removeAutoWithdraw: Boolean
   }
 
   type User {
@@ -69,6 +71,7 @@ export default gql`
     nostrPubkey: String
     nostrRelays: [String!]
     noteAllDescendants: Boolean!
+    noteTerritoryPosts: Boolean!
     noteCowboyHat: Boolean!
     noteDeposits: Boolean!
     noteEarning: Boolean!
@@ -97,6 +100,7 @@ export default gql`
     """
     sats: Int!
     authMethods: AuthMethods!
+    lnAddr: String
 
     """
     only relevant to user
@@ -125,6 +129,7 @@ export default gql`
     nostrPubkey: String
     nostrRelays: [String!]
     noteAllDescendants: Boolean!
+    noteTerritoryPosts: Boolean!
     noteCowboyHat: Boolean!
     noteDeposits: Boolean!
     noteEarning: Boolean!
@@ -137,6 +142,8 @@ export default gql`
     turboTipping: Boolean!
     wildWestMode: Boolean!
     withdrawMaxFeeDefault: Int!
+    autoWithdrawThreshold: Int
+    autoWithdrawMaxFeePercent: Float
   }
 
   type UserOptional {
